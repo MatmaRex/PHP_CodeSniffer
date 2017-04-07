@@ -1520,7 +1520,22 @@ class PHP_CodeSniffer
                     $di = new DirectoryIterator($path);
                 } else {
                     $di = new RecursiveIteratorIterator(
-                        new RecursiveDirectoryIterator($path),
+                        new RecursiveCallbackFilterIterator(
+                            new RecursiveDirectoryIterator($path),
+                            // Filter out directories first to avoid listing huge numbers of files
+                            // that we're going to ignore anyway
+                            function ($current) {
+                                if ($current->isFile()) {
+                                    // Files are checked later
+                                    return true;
+                                }
+                                $path = $current->getPathname();
+                                if ($this->shouldIgnoreFile($path, dirname($path)) === true) {
+                                    return false;
+                                }
+                                return true;
+                            }
+                        ),
                         0,
                         RecursiveIteratorIterator::CATCH_GET_CHILD
                     );
